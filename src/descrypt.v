@@ -20,9 +20,9 @@ module tt_um_millerresearch_descrypt (
 
 	wire shiftout = keybuf[1];
 	wire rdy = (round == 18);
-	assign ui_out[0] = shiftout;
-	assign ui_out[1] = rdy;
-	assign ui_out[7:2] = 0;
+	assign uo_out[0] = shiftout;
+	assign uo_out[1] = rdy;
+	assign uo_out[7:2] = 0;
 	assign uio_out = 0;
 	assign uio_oe = 0;
 

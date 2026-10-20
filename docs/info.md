@@ -9,12 +9,12 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
+Initial version of project will encrypt or decrypt one 64-bit data block using a 64-bit DES key.
 
 ## How to test
 
-Explain how to use your project
+Using mode 0 SPI connection, send three 9-byte messages. The first has command byte KEY followed by 8 byte key value. The second has command byte DATA+ENCRYPT or DATA+DECRYPT followed by 8 byte data value. The third has 0 command byte and 8 bytes dummy data, to enable reading back the encryped or decrypted result.
 
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+Connect using standard SPI PMOD, or SPI pin assignments on TT dev board.

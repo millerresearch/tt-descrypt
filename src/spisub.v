@@ -35,7 +35,9 @@ module spisub #(parameter WIDTH=16) (
 			mosivalid <= 0;
 			shiftreg[0] <= MOSI;
 			if (~SS & sclk_rising) begin
+// verilator lint_off WIDTHEXPAND
 				if (bitcount != (WIDTH-1)) begin
+// verilator lint_on WIDTHEXPAND
 					bitcount <= bitcount + 1;
 				end else begin
 					bitcount <= 0;

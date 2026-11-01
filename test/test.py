@@ -36,7 +36,7 @@ async def spitrans(dut, tx, len):
 		MOSI.value = (tx>>i) & 1
 		await Timer(sclk_period/2, units="ns")
 		SCLK.value = 1
-		rx |= (MISO.value<<i)
+		rx |= (int(MISO.value)<<i)
 		await Timer(sclk_period/2, units="ns")
 		SCLK.value = 0
 	return rx

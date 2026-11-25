@@ -9,19 +9,17 @@ module des (
 	input [1:64] key,
 	input [1:64] plaintext,
 	output [1:64] ciphertext,
-	input loadkey,
-	input loadblock,
 	input req,
-	output rdy
+	output reg rdy
 	);
 
-	reg [4:0] round;
-	assign rdy = (round == 17);
+	reg [3:0] round;
 	reg [1:64] cryptbuf;
 	wire [1:64] initcrypt, nextcrypt, finalcrypt;
-	assign ciphertext = cryptbuf;
+	assign ciphertext = finalcrypt;
 	reg [1:56] keybuf;
 	wire [1:56] initkey, nextkey;
+	wire [1:56] reducekey;
 	wire [1:48] subkey;
 	reg running;
 	reg decrypting;
@@ -31,37 +29,31 @@ module des (
 		round <= 0;
 		running <= 0;
 		decrypting <= 0;
-	end else case (round)
-		0, 17: begin
-				if (running) begin
-					running <= 0;
-					keybuf <= nextkey;
-					cryptbuf <= initcrypt;
-					round <= 1;
-				end else begin
-					if (loadkey)
-						keybuf <= initkey;
-					if (loadblock)
-						cryptbuf <= plaintext;
-					running <= req;
-					decrypting <= decrypt;
-				end
-			end
-		16: begin
-				round <= round + 1;
-				cryptbuf <= finalcrypt;
-			end
-		default: begin
-				round <= round + 1;
-				cryptbuf <= nextcrypt;
-				keybuf <= nextkey;
-			end
-		endcase
+		rdy <= 0;
+	end else if (!running) begin
+		running <= req;
+		rdy <= 0;
+		if (req) begin
+			keybuf <= decrypt? reducekey : initkey;
+			cryptbuf <= initcrypt;
+			decrypting <= decrypt;
+			round <= 1;
+		end
+	end else begin
+		round <= round + 1'b1;
+		cryptbuf <= nextcrypt;
+		keybuf <= nextkey;
+		if (round == 15) begin
+			rdy <= 1;
+			running <= 0;
+		end
+	end
 
-	IP IP (cryptbuf, initcrypt);
+	IP IP (plaintext, initcrypt);
 	Feistel Feistel (cryptbuf, nextcrypt, subkey);
 	IPinverse IPinverse ({nextcrypt[33:64],nextcrypt[1:32]}, finalcrypt);
-	PC1 PC1 (key, initkey);
+	PC1 PC1 (key, reducekey);
+	Keysched Keysched0 (reducekey, initkey, 4'd0, decrypt);
 	Keysched Keysched (keybuf, nextkey, round, decrypting);
 	PC2 PC2 (keybuf, subkey);
 
@@ -95,7 +87,7 @@ endmodule
 module Keysched (
 	input [1:56] keyin,
 	output [1:56] keyout,
-	input [4:0] round,
+	input [3:0] round,
 	input decrypt
 	);
 
@@ -105,14 +97,12 @@ module Keysched (
 	wire [1:28] rkey = keyin[29:56];
 	always @(*)
 		if (decrypt) case(round)
-			0, 17:
-				k = {lkey,rkey};
-			1, 8, 15:
+			0, 1, 8, 15:
 				k = {lkey[28],lkey[1:27],rkey[28],rkey[1:27]};
 			default:
 				k = {lkey[27:28],lkey[1:26],rkey[27:28],rkey[1:26]};
 		endcase else case(round)
-			0, 1, 8, 15, 17:
+			0, 1, 8, 15:
 				k = {lkey[2:28],lkey[1],rkey[2:28],rkey[1]};
 			default:
 				k = {lkey[3:28],lkey[1:2],rkey[3:28],rkey[1:2]};

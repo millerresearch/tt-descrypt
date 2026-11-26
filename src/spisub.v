@@ -14,17 +14,13 @@ module spisub #(parameter WIDTH=16) (
 	assign mosidata = shiftreg[WIDTH:1];
 	reg [LOGWIDTH-1:0] bitcount;
 
-	// synchronise SCLK and SS to fabric clk and detect SCLK edges
+	// synchronise SCLK to fabric clk and detect edges
 	reg [2:0] sclk_sync;
-	reg [1:0] ss_sync;
 	always @(posedge clk)
-		if (rst) begin
+		if (rst)
 			sclk_sync <= 0;
-			ss_sync <= 0;
-		end else begin
+		else
 			sclk_sync <= {SCLK,sclk_sync[2:1]};
-			ss_sync <= {SS,ss_sync[1]};
-		end
 	wire sclk_rising = (sclk_sync[1:0] == 2'b10);
 	wire sclk_falling = (sclk_sync[1:0] == 2'b01);
 
@@ -38,7 +34,7 @@ module spisub #(parameter WIDTH=16) (
 		end else begin
 			mosivalid <= 0;
 			shiftreg[0] <= MOSI;
-			if (~ss_sync[0] & sclk_rising) begin
+			if (~SS & sclk_rising) begin
 // verilator lint_off WIDTHEXPAND
 				if (bitcount != (WIDTH-1)) begin
 // verilator lint_on WIDTHEXPAND
@@ -55,8 +51,8 @@ module spisub #(parameter WIDTH=16) (
 	always @(posedge clk)
 		if (rst)
 			shiftreg[WIDTH:1] <= 0;
-		else if (ss_sync[0] || sclk_falling) begin
-			if (ss_sync[0] || ((|bitcount) == 0)) begin
+		else if (SS || sclk_falling) begin
+			if (SS || ((|bitcount) == 0)) begin
 				if (misovalid)
 					shiftreg[WIDTH:1] <= misodata;
 			end else

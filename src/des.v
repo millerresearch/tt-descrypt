@@ -34,15 +34,17 @@ module des (
 		running <= req;
 		rdy <= 0;
 		if (req) begin
-			keybuf <= decrypt? reducekey : initkey;
+			keybuf <= reducekey;
 			cryptbuf <= initcrypt;
 			decrypting <= decrypt;
-			round <= 1;
+			round <= 0;
 		end
 	end else begin
 		round <= round + 1'b1;
-		cryptbuf <= nextcrypt;
-		keybuf <= nextkey;
+		if (round != 0)
+			cryptbuf <= nextcrypt;
+		if (round != 0 || !decrypting)
+			keybuf <= nextkey;
 		if (round == 15) begin
 			rdy <= 1;
 			running <= 0;
@@ -53,7 +55,6 @@ module des (
 	Feistel Feistel (cryptbuf, nextcrypt, subkey);
 	IPinverse IPinverse ({nextcrypt[33:64],nextcrypt[1:32]}, finalcrypt);
 	PC1 PC1 (key, reducekey);
-	Keysched Keysched0 (reducekey, initkey, 4'd0, decrypt);
 	Keysched Keysched (keybuf, nextkey, round, decrypting);
 	PC2 PC2 (keybuf, subkey);
 

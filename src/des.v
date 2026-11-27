@@ -9,53 +9,67 @@ module des (
 	input [1:64] key,
 	input [1:64] plaintext,
 	output [1:64] ciphertext,
+	input loadkey,
+	input loadblock,
 	input req,
 	output reg rdy
 	);
 
-	reg [3:0] round;
+	reg [4:0] round;
 	reg [1:64] cryptbuf;
 	wire [1:64] initcrypt, nextcrypt, finalcrypt;
-	assign ciphertext = finalcrypt;
+	assign ciphertext = cryptbuf;
 	reg [1:56] keybuf;
 	wire [1:56] initkey, nextkey;
-	wire [1:56] reducekey;
 	wire [1:48] subkey;
 	reg running;
 	reg decrypting;
 
 	always @(posedge clk)
 	if (rst) begin
+		cryptbuf <= 0;
+		keybuf <= 0;
 		round <= 0;
-		running <= 0;
 		decrypting <= 0;
-		rdy <= 0;
+		running <= 0;
 	end else if (!running) begin
 		running <= req;
-		rdy <= 0;
+		if (loadkey)
+			keybuf <= initkey;
+		if (loadblock)
+			cryptbuf <= plaintext;
 		if (req) begin
-			keybuf <= reducekey;
-			cryptbuf <= initcrypt;
 			decrypting <= decrypt;
-			round <= 0;
+			rdy <= 0;
 		end
 	end else begin
 		round <= round + 1'b1;
-		if (round != 0)
-			cryptbuf <= nextcrypt;
-		if (round != 0 || !decrypting)
-			keybuf <= nextkey;
-		if (round == 15) begin
-			rdy <= 1;
-			running <= 0;
-		end
+		case (round)
+		0:	begin
+				if (!decrypting)
+					keybuf <= nextkey;
+				cryptbuf <= initcrypt;
+			end
+		default: begin
+				cryptbuf <= nextcrypt;
+				keybuf <= nextkey;
+			end
+		16:	begin
+				rdy <= 1;
+				round <= 0;
+				running <= 0;
+				cryptbuf <= finalcrypt;
+				if (decrypting)
+					keybuf <= nextkey;
+			end
+		endcase
 	end
 
-	IP IP (plaintext, initcrypt);
+	IP IP (cryptbuf, initcrypt);
 	Feistel Feistel (cryptbuf, nextcrypt, subkey);
 	IPinverse IPinverse ({nextcrypt[33:64],nextcrypt[1:32]}, finalcrypt);
-	PC1 PC1 (key, reducekey);
-	Keysched Keysched (keybuf, nextkey, round, decrypting);
+	PC1 PC1 (key, initkey);
+	Keysched Keysched (keybuf, nextkey, round[3:0], decrypting);
 	PC2 PC2 (keybuf, subkey);
 
 endmodule
@@ -112,9 +126,7 @@ endmodule
 
 // permuted choice 1
 module PC1 (
-	// verilator lint_off UNUSEDSIGNAL
 	input [1:64] d,
-	// verilator lint_on UNUSEDSIGNAL
 	output [1:56] q
 	);
 
@@ -124,13 +136,12 @@ module PC1 (
 		d[63], d[55], d[47], d[39], d[31], d[23], d[15], d[7], d[62], d[54], d[46], d[38], d[30], d[22],
 		d[14], d[6], d[61], d[53], d[45], d[37], d[29], d[21], d[13], d[5], d[28], d[20], d[12], d[4]
 	};
+	wire _unused = &{d[8],d[16],d[24],d[32],d[40],d[48],d[56],d[64],1'b0};
 endmodule
 
 // permuted choice 2
 module PC2 (
-	// verilator lint_off UNUSEDSIGNAL
 	input [1:56] d,
-	// verilator lint_on UNUSEDSIGNAL
 	output [1:48] q
 	);
 
@@ -140,6 +151,7 @@ module PC2 (
 		d[41], d[52], d[31], d[37], d[47], d[55], d[30], d[40], d[51], d[45], d[33], d[48],
 		d[44], d[49], d[39], d[56], d[34], d[53], d[46], d[42], d[50], d[36], d[29], d[32]
 	};
+	wire _unused = &{d[9],d[18],d[22],d[25],d[35],d[38],d[43],d[54],1'b0};
 endmodule
 
 // initial permutation

@@ -65,11 +65,15 @@ async def test(dut):
 	ciphertext = 0x690F5B0D9A26939B
 
 	# request encryption
-	await transaction(dut, 1<<KEY, key)
+	await transaction(dut, (1<<KEY), key)
 	await transaction(dut, (1<<BLOCK) | (1<<ENCRYPT), plaintext)
 	await ClockCycles(dut.clk, 20)
 	result = await transaction(dut, 0, 0)
 	assert result == ciphertext
+	# reverse and check
+	await transaction(dut, (1<<DECRYPT), 0)
+	result = await transaction(dut, 0, 0)
+	assert result == plaintext
 
 	# request decryption
 	await transaction(dut, 1<<KEY, key)
@@ -77,6 +81,10 @@ async def test(dut):
 	await ClockCycles(dut.clk, 20)
 	result = await transaction(dut, 0, 0)
 	assert result == plaintext
+	# reverse and check
+	await transaction(dut, (1<<ENCRYPT), 0)
+	result = await transaction(dut, 0, 0)
+	assert result == ciphertext
 
 	# triple DES with two keys - encrypt and decrypt
 	key1 = 0x5555555555555555

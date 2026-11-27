@@ -32,6 +32,7 @@ module des (
 		round <= 0;
 		decrypting <= 0;
 		running <= 0;
+		rdy <= 0;
 	end else if (!running) begin
 		running <= req;
 		if (loadkey)
